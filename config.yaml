@@ -1,0 +1,29 @@
+
+data:
+  url: "https://www.sidc.be/silso/DATA/SN_d_tot_V2.0.csv"
+  save_path: "data/raw/sunspots.csv"
+  processed_path: "data/processed/sunspots_features.csv"
+
+features:
+  lags: [1, 7, 30, 365, 4015]
+  rolling_windows: [7, 30, 365, 4015]
+  target_shift: -5  # 5 days ahead? The code used -5
+  max_lag_resid: 5
+
+model:
+  ridge_alpha: 1.0
+  xgb_params:
+    n_estimators: 200
+    max_depth: 3
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 7
+  evt:
+    upper_q: 80
+    lower_q: 20
+
+evaluation:
+  initial_train_size: 4015 # 11 years * 365
+  val_size: 5
+  step_size: 365
