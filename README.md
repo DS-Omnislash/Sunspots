@@ -1,24 +1,31 @@
 
-# Sunspot Forecasting: Hybrid Ridge + XGBoost + EVT
+# Sunspot Forecasting: Hybrid Ridge + LightGBM + EVT
 
 ## Overview
 
 This project implements an advanced time-series forecasting pipeline to predict **Daily International Sunspot Numbers**. The goal is to accurately model the 11-year solar cycle while improving the detection of extreme solar activity events, which are critical for space weather monitoring.
 
-To achieve this, we employ a **Hybrid Machine Learning Architecture** that decomposes the problem into three distinct layers:
+We employ a **Hybrid Machine Learning Architecture** that decomposes the problem into three distinct layers:
 
-1.  **Trend & Seasonality (Linear Baseline)**: 
-    *   **Ridge Regression** is used to capture the broad, auto-regressive trends and the dominant periodicities of the time series.
-    
-2.  **Non-Linear Residual Correction**: 
-    *   **Gradient Boosting (XGBoost/LightGBM)** is trained on the *residuals* of the linear model. It learns the complex, short-term non-linear dynamics that the linear model misses.
-    
-3.  **Tail Calibration (Extreme Value Theory)**:
-    *   We apply **EVT (Peaks-Over-Threshold)** to model the tail distribution of the forecast errors, adjusting predictions for extreme solar events.
+1. **Trend & Seasonality (Linear Baseline)**:
+   - **Ridge Regression** captures the broad auto-regressive trends and dominant periodicities of the time series.
+
+2. **Non-Linear Residual Correction**:
+   - **LightGBM** (default) or XGBoost is trained on the *residuals* of the linear model, learning the complex short-term non-linear dynamics that the linear model misses.
+
+3. **Tail Calibration (Extreme Value Theory)**:
+   - **EVT (Peaks-Over-Threshold)** models the tail distribution of forecast errors, adjusting predictions for extreme solar events.
+
+## Current Performance
+
+Evaluated with expanding-window walk-forward validation (1965–2026):
+
+| Metric | Value |
+|--------|-------|
+| RMSE   | 19.24 |
+| MAE    | 17.54 |
 
 ## Project Structure
-
-The codebase is organized to separate data processing, modeling, and experimentation:
 
 ```
 Sunspots/
@@ -75,31 +82,48 @@ So the notebooks pick up the venv automatically:
 python -m ipykernel install --user --name=sunspots --display-name "Sunspots Venv"
 ```
 
-### 2. Training the Model
-Open `notebooks/01-Analysis_and_Modeling.ipynb` to:
-1.  Load data and engineer features.
-2.  Evaluate the hybrid model using walk-forward validation.
-3.  **Export the model data**: The last cell saves the required data to the `models/` folder.
+### 4. Training the Model
 
-### 3. Interactive Predictions (Toni's Predictor)
+Open `notebooks/01-Analysis_and_Modeling.ipynb` to:
+1. Load data and engineer features.
+2. Evaluate the hybrid model using walk-forward validation.
+3. **Export the model data**: the last cell saves the required files to `models/`.
+
+### 5. Interactive Predictions (Toni's Predictor)
+
 Run `02-Gradio_Predictions.ipynb` to launch an interactive Gradio web interface. You can:
-- Select the number of future days to forecast.
+- Select the number of future days to forecast (up to 30).
 - View a table of predicted sunspot counts.
 - See a trend plot combining recent history and future forecasts.
+- Inspect the historical backtesting performance.
 
 ## Methodology
 
-### Reproducibility
-The model is configured with a fixed **Random State of 7** (Toni's lucky number) in `config.yaml` to ensure consistent and reproducible results across different runs.
+### Feature Engineering
 
-### Data Handling
-- **Source**: SILSO (Sunspot Index and Long-term Solar Observations).
-- **Preprocessing**: Log-transformation `log(1+x)` is applied to stabilize variance.
+| Feature group | Details |
+|---|---|
+| Auto-regressive lags | t-1, t-2, t-3, t-4, t-5, t-7, t-30, t-365, t-4015 (log scale) |
+| Rolling statistics | Mean, std, min, max over windows of 7, 30, 365, 4015 days |
+| Momentum | `lag_1 − lag_30` (short vs. long-term trend direction) |
+| Annual seasonality | sin/cos encoding of day-of-year |
+| Solar cycle phase | sin/cos encoding anchored to the 2008-12 solar minimum (~4015-day cycle) |
 
 ### Validation Strategy
-We use **Expanding Window Walk-Forward Validation** to strictly prevent data leakage.
-- **Initial Training**: 11 years (approx. 4015 days).
-- **Validation Horizon**: Multi-day forecasts.
+
+**Expanding Window Walk-Forward Validation** strictly prevents data leakage:
+- **Initial training window**: 11 years (~4015 days)
+- **Step size**: 90 days (quarterly advances for more reliable estimates)
+- **Forecast horizon**: 5 days (direct multi-step)
+
+### Reproducibility
+
+The model uses a fixed **Random State of 7** (Toni's lucky number) in `config.yaml` to ensure reproducible results.
+
+### Data
+
+- **Source**: [SILSO](https://www.sidc.be/silso/datafiles) (Sunspot Index and Long-term Solar Observations, Belgium)
+- **Preprocessing**: `log(1+x)` transformation to stabilise variance on the heavy-tailed distribution.
 
 ## Authors
 [Jordi Roselló / Toni Majà]
