@@ -5,13 +5,14 @@ data:
   processed_path: "data/processed/sunspots_features.csv"
 
 features:
-  lags: [1, 7, 30, 365, 4015]
+  lags: [1, 2, 3, 4, 5, 7, 30, 365, 4015]
   rolling_windows: [7, 30, 365, 4015]
   target_shift: -5  # 5 days ahead? The code used -5
-  max_lag_resid: 5
+  max_lag_resid: 20
 
 model:
   ridge_alpha: 1.0
+  resid_model_type: lgb
   xgb_params:
     n_estimators: 200
     max_depth: 3
@@ -19,6 +20,13 @@ model:
     subsample: 0.8
     colsample_bytree: 0.8
     random_state: 7
+    objective: 'reg:pseudohubererror'
+  lgb_params:
+    n_estimators: 300
+    learning_rate: 0.05
+    num_leaves: 31
+    verbosity: -1
+    n_jobs: -1
   evt:
     upper_q: 80
     lower_q: 20
@@ -26,4 +34,4 @@ model:
 evaluation:
   initial_train_size: 4015 # 11 years * 365
   val_size: 5
-  step_size: 365
+  step_size: 90

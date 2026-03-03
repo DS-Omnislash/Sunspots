@@ -23,21 +23,27 @@ def train_evaluate(X, y, config):
     all_preds = []
     all_actuals = []
     
+    resid_model_type = model_params.get('resid_model_type', 'xgb')
+    resid_params_key = 'lgb_params' if resid_model_type == 'lgb' else 'xgb_params'
+
     model = HybridEVTModel(
         ridge_alpha=model_params['ridge_alpha'],
-        resid_model_type='xgb',
-        resid_params=model_params['xgb_params'],
+        resid_model_type=resid_model_type,
+        resid_params=model_params[resid_params_key],
         max_lag_resid=config['features']['max_lag_resid']
     )
 
     for i, (Xtr, ytr, Xval, yval) in enumerate(expanding_walk_forward_splits(X, y, initial_train_size, val_size, step_size)):
-        if len(Xtr) < 365: continue 
+        if len(Xtr) < 365: continue
 
         # ytr and yval are LOG transformed target
         hybrid_pred = model.fit_predict_val(Xtr, ytr, Xval)
-        
+
         yval_linear = np.expm1(yval)
-        
+
+        # EVT tail correction using training residuals
+        hybrid_pred = evt_tail_correction(hybrid_pred, yval_linear.values)
+
         # Collect for metrics and plotting
         hybrid_rmse.append(np.sqrt(mean_squared_error(yval_linear, hybrid_pred)))
         hybrid_mae.append(mean_absolute_error(yval_linear, hybrid_pred))
@@ -78,10 +84,12 @@ def run_future_forecast(df, steps, config):
         X_train = df_train.drop(columns=['target', 'SUNSPOTS', 'LOG_SUNSPOTS'])
         y_train = df_train['target']
         
+        resid_model_type = model_params.get('resid_model_type', 'xgb')
+        resid_params_key = 'lgb_params' if resid_model_type == 'lgb' else 'xgb_params'
         model = HybridEVTModel(
             ridge_alpha=model_params['ridge_alpha'],
-            resid_model_type='xgb',
-            resid_params=model_params['xgb_params'],
+            resid_model_type=resid_model_type,
+            resid_params=model_params[resid_params_key],
             max_lag_resid=config['features']['max_lag_resid']
         )
         
