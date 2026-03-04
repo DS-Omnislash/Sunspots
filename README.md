@@ -122,5 +122,22 @@ python -m ipykernel install --user --name=sunspots --display-name "Sunspots Venv
 
 Fixed **Random State 7** (Toni's lucky number) in `config.yaml`.
 
+## Limitations
+
+**Horizon sweet spot.** The model is optimised for short-term forecasting (≤5 days). At 30-day horizon, ARIMA(5,1,0) outperforms it (RMSE 24.33 vs 28.54). The lag-based feature set captures recent autocorrelation well but does not encode the cyclic structure as explicitly as a classical AR model does over longer windows.
+
+| Horizon | RMSE — Hybrid | RMSE — Best baseline | Winner |
+|---|---|---|---|
+| 5 days | **19.24** | 22.04 (naive) | Hybrid |
+| 30 days | 28.54 | **24.33** (ARIMA) | ARIMA |
+
+**Point estimates only.** The model returns single-value forecasts with no uncertainty quantification. Prediction intervals would be valuable for operational use.
+
+**Retrains on every forecast.** `run_future_forecast` fits a fresh model for each horizon step. Acceptable for a demo; not suitable for production without caching.
+
+**Sunspot count ≠ geomagnetic impact.** Sunspot numbers are a proxy for solar activity. The actual space-weather effect depends on the magnetic orientation of CMEs and other factors not captured here.
+
+**Data lag.** SILSO validates and publishes data with a 1–2 day delay, so truly real-time inference is not possible.
+
 ## Authors
 [Jordi Roselló / Toni Majà]
