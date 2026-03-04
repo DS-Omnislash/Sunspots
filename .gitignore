@@ -16,6 +16,9 @@ env/
 # Data (processed only — raw is kept)
 data/processed/
 
+# Generated reports (figures)
+reports/
+
 # Distribution / packaging
 *.egg-info/
 dist/

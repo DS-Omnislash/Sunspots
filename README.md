@@ -15,7 +15,7 @@ We employ a **Hybrid Machine Learning Architecture** that decomposes the problem
 
 ## Current Performance
 
-Evaluated with expanding-window walk-forward validation (1965–2026):
+Evaluated with expanding-window walk-forward validation (1965–2026), **5-day forecast horizon**:
 
 | Model | Granularity | RMSE | MAE |
 |---|---|---|---|
@@ -47,9 +47,12 @@ Sunspots/
 │
 ├── models/              # Exported model data and config (joblib)
 │
+├── reports/             # Auto-generated figures (gitignored)
+│
 ├── notebooks/
-│   ├── 00-EDA.ipynb                # ← Start here: data download + exploration
-│   └── 01-Analysis_and_Modeling.ipynb  # Training, baselines, evaluation, export
+│   ├── 00-EDA.ipynb                    # ← Start here: data download + exploration
+│   ├── 01-Analysis_and_Modeling.ipynb  # Training, baselines, evaluation, export
+│   └── 02-Experiments.ipynb            # Horizon sensitivity experiments
 │
 ├── 02-Gradio_Predictions.ipynb     # Interactive app (Toni's Predictor)
 │
@@ -88,11 +91,14 @@ python -m ipykernel install --user --name=sunspots --display-name "Sunspots Venv
 
 | Step | Notebook | What it does |
 |---|---|---|
-| 1 | `notebooks/00-EDA.ipynb` | Downloads data from SILSO, explores distributions, autocorrelation, solar cycles, and baseline comparisons |
-| 2 | `notebooks/01-Analysis_and_Modeling.ipynb` | Trains the hybrid model, compares against baselines (including ARIMA and McNish-Lincoln), exports artefacts to `models/` |
-| 3 | `02-Gradio_Predictions.ipynb` | Launches the interactive Gradio app using the exported artefacts |
+| 1 | `notebooks/00-EDA.ipynb` | Downloads data from SILSO, explores distributions, autocorrelation, solar cycles, and naive baselines |
+| 2 | `notebooks/01-Analysis_and_Modeling.ipynb` | Trains the hybrid model, compares against all baselines (ARIMA, McNish-Lincoln), exports artefacts to `models/` |
+| 3 | `notebooks/02-Experiments.ipynb` | Horizon sensitivity: 30-day experiment + sweep across horizons 1–30 days *(optional)* |
+| 4 | `02-Gradio_Predictions.ipynb` | Launches the interactive Gradio app using the exported artefacts |
 
 > `data/raw/sunspots.csv` is cached after the first download — subsequent runs skip re-downloading automatically.
+
+> Running the notebooks in order also populates `reports/` with numbered PNG figures (EDA plots, walk-forward predictions, horizon sweep) for offline review.
 
 ## Methodology
 
@@ -124,12 +130,21 @@ Fixed **Random State 7** (Toni's lucky number) in `config.yaml`.
 
 ## Limitations
 
-**Horizon sweet spot.** The model is optimised for short-term forecasting (≤5 days). At 30-day horizon, ARIMA(5,1,0) outperforms it (RMSE 24.33 vs 28.54). The lag-based feature set captures recent autocorrelation well but does not encode the cyclic structure as explicitly as a classical AR model does over longer windows.
+**Horizon characteristics.** A horizon sweep (1–30 days) reveals that relative improvement over the naive baseline *grows* with forecast distance, peaking around 21 days. However, at 1 day the hybrid is slightly worse than naive — lag-1 persistence is nearly unbeatable at a single step.
 
-| Horizon | RMSE — Hybrid | RMSE — Best baseline | Winner |
+| Horizon | Hybrid RMSE | Naive RMSE | Improvement |
 |---|---|---|---|
-| 5 days | **19.24** | 22.04 (naive) | Hybrid |
-| 30 days | 28.54 | **24.33** (ARIMA) | ARIMA |
+| 1 day | 11.38 | 10.82 | −5.1% *(naive wins)* |
+| 2 days | 13.75 | 14.31 | +3.9% |
+| 5 days | 19.24 | 22.04 | +12.7% |
+| 10 days | 24.40 | 31.56 | +22.7% |
+| 14 days | 27.08 | 37.96 | +28.7% |
+| **21 days** | **27.31** | **38.55** | **+29.2% ← peak** |
+| 30 days | 28.54 | 40.18 | +29.0% |
+
+The deployed model uses a **5-day horizon** (best absolute RMSE). For applications where relative gain over a simple baseline matters more than raw accuracy, 14–21 days is the sweet spot.
+
+**ARIMA at monthly granularity.** When compared against ARIMA(5,1,0) evaluated on monthly resampled data, the hybrid loses at 30-day horizon (RMSE 28.54 vs 24.33). The lag-based feature set does not encode the cyclic structure as explicitly as a classical AR model over longer windows.
 
 **Point estimates only.** The model returns single-value forecasts with no uncertainty quantification. Prediction intervals would be valuable for operational use.
 
