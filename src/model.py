@@ -8,9 +8,9 @@ from scipy.stats import genpareto, genextreme as gev
 from src.features import build_residual_lags
 
 def evt_tail_correction(forecast, actual, upper_q=80, lower_q=20):
-    residuals = actual - forecast
-    if len(residuals) == 0:
+    if len(actual) == 0:
         return forecast
+    residuals = actual - forecast
 
     upper_thresh = np.percentile(residuals, upper_q)
     lower_thresh = np.percentile(residuals, lower_q)

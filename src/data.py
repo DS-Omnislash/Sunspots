@@ -14,6 +14,7 @@ def load_data(url, save_path=None):
         if save_path and os.path.exists(save_path):
             print(f"Loading data from local file: {save_path}")
             df = pd.read_csv(save_path, index_col=0, parse_dates=True)
+            df['SUNSPOTS'] = df['SUNSPOTS'].clip(lower=0)
             return df
 
         print(f"Downloading data from {url}...")
