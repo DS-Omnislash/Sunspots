@@ -52,7 +52,8 @@ Sunspots/
 ├── notebooks/
 │   ├── 00-EDA.ipynb                    # ← Start here: data download + exploration
 │   ├── 01-Analysis_and_Modeling.ipynb  # Training, baselines, evaluation, export
-│   └── 02-Experiments.ipynb            # Horizon sensitivity experiments
+│   ├── 02-Experiments.ipynb            # Horizon sensitivity experiments
+│   └── 03-Optimization.ipynb           # Model enhancements (prediction intervals, …)
 │
 ├── 02-Gradio_Predictions.ipynb     # Interactive app (Toni's Predictor)
 │
@@ -94,7 +95,8 @@ python -m ipykernel install --user --name=sunspots --display-name "Sunspots Venv
 | 1 | `notebooks/00-EDA.ipynb` | Downloads data from SILSO, explores distributions, autocorrelation, solar cycles, and naive baselines |
 | 2 | `notebooks/01-Analysis_and_Modeling.ipynb` | Trains the hybrid model, compares against all baselines (ARIMA, McNish-Lincoln), exports artefacts to `models/` |
 | 3 | `notebooks/02-Experiments.ipynb` | Horizon sensitivity: 30-day experiment + sweep across horizons 1–30 days *(optional)* |
-| 4 | `02-Gradio_Predictions.ipynb` | Launches the interactive Gradio app using the exported artefacts |
+| 4 | `notebooks/03-Optimization.ipynb` | Improvement attempts: quantile regression intervals + Optuna hyperparameter tuning *(optional)* |
+| 5 | `02-Gradio_Predictions.ipynb` | Launches the interactive Gradio app using the exported artefacts |
 
 > `data/raw/sunspots.csv` is cached after the first download — subsequent runs skip re-downloading automatically.
 
@@ -146,7 +148,17 @@ The deployed model uses a **5-day horizon** (best absolute RMSE). For applicatio
 
 **ARIMA at monthly granularity.** When compared against ARIMA(5,1,0) evaluated on monthly resampled data, the hybrid loses at 30-day horizon (RMSE 28.54 vs 24.33). The lag-based feature set does not encode the cyclic structure as explicitly as a classical AR model over longer windows.
 
-**Point estimates only.** The model returns single-value forecasts with no uncertainty quantification. Prediction intervals would be valuable for operational use.
+**Point estimates only.** The model returns single-value forecasts with no uncertainty quantification. LightGBM quantile regression was tried (`03-Optimization.ipynb`) but as a standalone model it drops the hybrid architecture advantage (RMSE 33.91 vs 19.24). Adding intervals without sacrificing accuracy would require wrapping the full hybrid with conformal prediction (e.g. MAPIE).
+
+**Improvement attempts and results.** Three approaches were explored to push the RMSE below 19.24 — all resulted in marginal degradation:
+
+| Attempt | Result | Reason |
+|---|---|---|
+| Optuna hyperparameter tuning (50 trials) | RMSE 19.83 (+3.1% worse) | Fixed holdout = Solar Cycle 25 peak; optimised for atypical period |
+| F10.7 solar flux as exogenous feature | RMSE 19.90 (+3.4% worse) | High correlation with sunspot lags — no independent signal added |
+| Quantile regression (intervals) | Coverage 67.3%, RMSE 33.91 | Standalone LGB drops Ridge + EVT layers |
+
+The model appears near its ceiling for the current feature set. Likely gains remain in multi-output forecasting or deep learning architectures (N-BEATS/N-HiTS).
 
 **Retrains on every forecast.** `run_future_forecast` fits a fresh model for each horizon step. Acceptable for a demo; not suitable for production without caching.
 

@@ -47,3 +47,63 @@ def load_data(url, save_path=None):
     except Exception as e:
         print(f"Error loading data: {e}")
         raise
+
+
+def load_solar_flux(url, save_path=None):
+    """
+    Loads the F10.7 solar flux index (Penticton adjusted) from NOAA NGDC.
+    Returns a DataFrame with a DatetimeIndex and a single column 'F10.7'.
+    Falls back to local cache if available.
+    """
+    if save_path and os.path.exists(save_path):
+        print(f"Loading solar flux from local file: {save_path}")
+        return pd.read_csv(save_path, index_col=0, parse_dates=True)
+
+    print(f"Downloading solar flux from {url}...")
+    r = requests.get(url, timeout=30)
+    r.raise_for_status()
+
+    lines = r.text.splitlines()
+    rows = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#') or line.startswith(':'):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        try:
+            # Date is YYYYMMDD or YYYYMMDD.0 in parts[0]
+            date_int = int(float(parts[0]))
+            date_str = str(date_int)
+            if len(date_str) != 8:
+                continue
+            year  = int(date_str[:4])
+            month = int(date_str[4:6])
+            day   = int(date_str[6:8])
+
+            # Try each remaining column for a valid flux value (50–500 SFU)
+            for candidate in parts[1:]:
+                val = float(candidate)
+                if 50 <= val <= 500:
+                    rows.append((pd.Timestamp(year, month, day), val))
+                    break
+        except (ValueError, IndexError):
+            continue
+
+    if not rows:
+        print("load_solar_flux: could not parse any rows. First 20 lines of response:")
+        for l in lines[:20]:
+            print(repr(l))
+        raise ValueError("load_solar_flux: zero rows parsed — see printed output above for format debugging")
+
+    df = pd.DataFrame(rows, columns=['Date', 'F10.7']).set_index('Date').sort_index()
+    df = df[~df.index.duplicated(keep='last')]
+    print(f"Solar flux loaded: {len(df):,} days  ({df.index.min().date()} → {df.index.max().date()})")
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        df.to_csv(save_path)
+        print(f"Solar flux saved to {save_path}")
+
+    return df

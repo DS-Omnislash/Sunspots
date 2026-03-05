@@ -26,6 +26,14 @@ def create_features(df, lags, rolling_windows, date_features=True):
         df_feat[f'roll_min_{window}'] = df_feat['LOG_SUNSPOTS'].rolling(window).min()
         df_feat[f'roll_max_{window}'] = df_feat['LOG_SUNSPOTS'].rolling(window).max()
 
+    # F10.7 solar flux features (only if column is present)
+    if 'F10.7' in df_feat.columns:
+        df_feat['LOG_F10.7'] = np.log(df_feat['F10.7'])
+        for lag in [1, 7, 30]:
+            df_feat[f'f107_lag_{lag}'] = df_feat['LOG_F10.7'].shift(lag)
+        df_feat['f107_roll_mean_30'] = df_feat['LOG_F10.7'].rolling(30).mean()
+        df_feat['f107_momentum']     = df_feat['f107_lag_1'] - df_feat['f107_lag_30']
+
     # Date features
     if date_features:
         df_feat['dayofyear'] = df_feat.index.dayofyear

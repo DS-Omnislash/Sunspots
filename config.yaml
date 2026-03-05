@@ -3,6 +3,8 @@ data:
   url: "https://www.sidc.be/silso/DATA/SN_d_tot_V2.0.csv"
   save_path: "data/raw/sunspots.csv"
   processed_path: "data/processed/sunspots_features.csv"
+  solar_flux_url: "https://www.ngdc.noaa.gov/stp/space-weather/solar-data/solar-features/solar-radio/noontime-flux/penticton/penticton_adjusted/listings/listing_drao_noontime-flux-adjusted_daily.txt"
+  solar_flux_path: "data/raw/solar_flux.csv"
 
 features:
   lags: [1, 2, 3, 4, 5, 7, 30, 365, 4015]

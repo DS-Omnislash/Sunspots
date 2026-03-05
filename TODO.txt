@@ -1,0 +1,91 @@
+================================================================================
+SUNSPOTS PROJECT — TO DO LIST
+================================================================================
+
+HONEST ASSESSMENT
+-----------------
+The project is portfolio-ready. Walk-forward validation with no leakage, meaningful
+baselines including domain-standard ones (ARIMA, McNish-Lincoln), honest limitations
+section (including where the model loses), clean src/ modules, config-driven design,
+and a horizon sweep showing analytical thinking beyond just "train and report".
+
+A hiring manager looking at this would see someone who knows how to think about
+time series properly.
+
+
+================================================================================
+WHAT'S MISSING FOR "PROFESSIONAL" QUALITY
+================================================================================
+
+[x] 1. No tests.
+        DONE — 27 tests across tests/test_features.py, test_data.py, test_model.py,
+        test_train.py. Also caught and fixed 2 real bugs in src/data.py and src/model.py.
+
+[x] 2. No CI.
+        DONE — .github/workflows/ci.yml runs pytest on every push/PR to main.
+
+[ ] 3. No deployed demo.
+        The Gradio app lives in a notebook. Deploying it to Hugging Face Spaces
+        (free, one app.py + requirements.txt) would let anyone use it without
+        cloning the repo — far more impressive for a portfolio.
+
+[x] 4. License.
+        DONE — MIT LICENSE added.
+
+
+================================================================================
+MODEL IMPROVEMENTS WORTH TRYING
+================================================================================
+
+--- HIGH IMPACT, LOW EFFORT ---
+
+[x] 5. Prediction intervals via quantile regression.
+        DONE — notebooks/03-Optimization.ipynb. Trains lower (α=0.10), median (α=0.50),
+        and upper (α=0.90) LightGBM quantile models in the same walk-forward framework.
+        Result: coverage 67.3% (target 80%), median RMSE 33.91 — intervals work but
+        standalone LGB drops the hybrid architecture advantage. Proper solution would
+        be conformal prediction (MAPIE) wrapping the full hybrid.
+
+[-] 5b. Optuna hyperparameter tuning (50 trials, TPE sampler).
+        TRIED — best walk-forward RMSE 19.83 vs baseline 19.24 (3.1% worse).
+        Fixed 2-year holdout biased optimisation toward Solar Cycle 25 peak params.
+        Model appears near its ceiling for this feature set.
+
+--- MEDIUM EFFORT, INTERESTING RESULTS ---
+
+[ ] 6. Blend ARIMA into the hybrid.
+        The horizon sweep showed ARIMA is competitive at longer horizons.
+        A simple weighted average of Hybrid + ARIMA predictions, with weights
+        that shift toward ARIMA as horizon grows, could improve the 10-30 day range.
+
+[ ] 7. Multi-output forecasting.
+        Currently run_future_forecast trains a fresh model per step. Training one
+        model with a multi-output target [t+1, t+2, ..., t+5] using
+        MultiOutputRegressor would be faster and might capture cross-horizon structure.
+
+--- HIGHER EFFORT, HIGHER CEILING ---
+
+[ ] 8. N-BEATS / N-HiTS (neuralforecast library).
+        Neural architectures built specifically for time series — no manual feature
+        engineering, handle multiple horizons natively, regularly top leaderboards
+        on solar/energy forecasting benchmarks. Would make for a direct
+        "classical ML vs deep learning" comparison.
+
+[-] 9. Exogenous variable: F10.7 solar flux index.
+        TRIED — RMSE 19.90 vs baseline 19.24 (marginally worse). F10.7 is too
+        correlated with existing sunspot lag features to add independent signal.
+        Infrastructure kept in src/data.py (load_solar_flux) and src/features.py
+        (conditional F10.7 features) but not active in the main pipeline.
+
+
+================================================================================
+THE ONE THING TO DO NEXT
+================================================================================
+
+>>> Deploy to Hugging Face Spaces.
+        Takes ~30 minutes, requires no infrastructure, and turns this from
+        "a repo I built" into "a live app you can use right now" — which is a
+        completely different conversation in an interview.
+
+
+================================================================================
